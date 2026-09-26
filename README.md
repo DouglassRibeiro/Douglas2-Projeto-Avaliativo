@@ -1,4 +1,4 @@
-**```a principio já que estou trabalhando em .py os gráficos serão armazenados na pasta projeto/graficos/...```**
+**```a princípio já que estou trabalhando em .py os gráficos serão armazenados na pasta projeto/graficos/...```**
 ---
 
 - **```if``` Recebe o endereço do arquivo em formato de texto, converte em Path e confirma se o caminho existe, caso não, adiciona uma menssagem de erro sem travar todo processamento.**
@@ -130,8 +130,6 @@ def gerar_graficos_eda(df: pd.DataFrame, pasta_saida: str = "graficos") -> None:
 
 ![Matriz de Correlação de Pearson](projeto/graficos/eda_03_correlacao_pearson.png)
 
-#
-#
 
 1. **Fica visivel nessa analise que há picos incomuns tendo uma descrepancia muito grande em o que é retido, e o que há de evasão. É mostrado um desbalanceamento Severo: A base conta com cerca de 83,2% de clientes ativos (classe 0) e apenas 16,8% evadidos (classe 1). Treinar modelos diretamente sem balanceamento fará o algoritmo priorizar a classe majoritária, gerando falsos negativos críticos.**
 
@@ -140,3 +138,72 @@ def gerar_graficos_eda(df: pd.DataFrame, pasta_saida: str = "graficos") -> None:
 
 
 3. **Multicolinearidade e Relação Linear: No mapa de correlação, CustomerID não possui valor preditivo (deve ser descartado é apenas o ID), enquanto variáveis comportamentais como Complain e Tenure demonstram forte correlação com o Churn.** 
+
+#
+#
+
+- **Removendo duplicidades organizando o mesmo peso há diferentes clientes, garantindo que o algoritimo de atenção igual**
+- **Pra garantir que ocorra aprendizado a remoção de duplicidade é essencial**
+```python
+    def tratar_duplicadas(df: pd.DataFrame) -> pd.DataFrame: # Verifica e remove linhas duplicadas para evitar redundância e viés.
+        total_duplicadas = df.duplicated().sum() 
+        # .duplicated olha se o DataFrame possui linhas duplicadas 
+        # .sum() soma isso depois, total_suplicadas recebe o total  
+        print(
+            f"\n[DATA PREP] Linhas duplicadas encontradas no dataset: {total_duplicadas}"
+        )
+
+        if total_duplicadas > 0:
+            df_limpo = df.drop_duplicates().copy() 
+            # .drop_duplicates apaga cópias duplicadas 
+            # "SettingWithCopyWarning" .copy - um novo local independente na meméria é alocado envitando aleteração no csv original
+            print(
+                f"[DATA PREP] Duplicadas removidas. Total de linhas atual: {len(df_limpo)}" # remoção de duplicidade é ecenssial para treinamento de um modelo
+            )
+            return df_limpo # remoção de duplicidade é ecencial para treinamento de um modelo
+
+        print("[DATA PREP] Nenhuma linha duplicada detectada.")
+        return df.copy()
+```
+
+---
+
+- **Por que usar mediana e não média?**
+- **Foi confirmado altos valores longe do normal (cauda longa à direita), apenas a divisão traria uma média fora do comum**
+- **O que deixa a analise proporcional da mediana como a melhor escolha tendo um padrão melhor a ser ponderado**
+
+```python
+    def tratar_nulos(df: pd.DataFrame) -> pd.DataFrame: # aplica imputação pela MEDIANA nas colunas numéricas com dados ausentes.
+    df_imputado = df.copy()
+    colunas_com_nulos = df_imputado.columns[ # colunas_com_nulos recebe apenas os nulos
+        df_imputado.isnull().any() # isnull() gera uma tabela avisando onde esta vazio verdadeiro, depois any() confirma onde é verdadeiro nessa tabela. 
+    ].tolist() # separando o que for confirmado em sua lista
+
+    print("\n--- TRATAMENTO DE VALORES NULOS VIA MEDIANA ---")
+    for coluna in colunas_com_nulos: # roda o total de colunas_com_nulos
+        mediana_valor = df_imputado[coluna].median() # pega o valor mediano apresentado naquela coluna
+        qtd_nulos = df_imputado[coluna].isnull().sum() # quantidade de nulos apresentados
+        df_imputado[coluna] = df_imputado[coluna].fillna(mediana_valor) # vasculha a coluna e sempre que encontra uma célula vazia insere a mediana geral.
+        print(
+            f"Coluna '{coluna}': {qtd_nulos} nulos imputados com a mediana = {mediana_valor}"
+        )
+
+    return df_imputado
+```
+- **Nota:** 
+    - Adicionar a mediana geral onde nulos são encontrados seria um problema se o cliente especifico já não fosse tão ativo.
+    - A mediana geral da base para OrderCount é 2.0.
+    - Ao imputar 2.0, estamos atribuindo 2 pedidos para esse cliente, o que gera uma distorção controlada, mas ainda assim artificial.
+    - Se esse cliente fosse alguém que comprou apenas 1 vez (ou estava inativo há muito tempo), estaríamos dobrando seu volume transacional teórico.
+        - Esse não foi um requisito levantado pelo projeto, vou aceitar um erro residual para proteger a escala global dos algortimos preditivos.
+
+---
+
+- **Demonstrando a presença de valores discrepantes na base via boxplot**
+- **De resto resume visualmente como os dados estão espalhados**
+- **Deixando claro na parte colorida onde é abrangido os 50% e sua mediana representada pela linha horizontal**
+- **Sua antena marca a variação aceitavel**
+
+![Boxplot (Diagrama de Caixa)](projeto/graficos/prep_01_boxplots_outliers.png)
+
+---
