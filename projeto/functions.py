@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Fase 1: Analise Exploratória de Dados (EDA)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 def carregar_dados(caminho_csv: str) -> pd.DataFrame: # Carrega o dataset e exibe a dimensão inicial.
     caminho = Path(caminho_csv)
@@ -101,3 +104,58 @@ def gerar_graficos_eda(df: pd.DataFrame, pasta_saida: str = "graficos") -> None:
     plt.savefig(caminho_g3, dpi=300)
     plt.close()
     print(f"[GRÁFICO SALVO] {caminho_g3}")
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Fase 2: Tratamento e Limpeza (Data Prep)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+def tratar_duplicadas(df: pd.DataFrame) -> pd.DataFrame: # Verifica e remove linhas duplicadas para evitar redundância e viés.
+    total_duplicadas = df.duplicated().sum() # .duplicated olha se o DataFrame possui linhas duplicadas, .sum() soma isso depois
+    print(
+        f"\n[DATA PREP] Linhas duplicadas encontradas no dataset: {total_duplicadas}"
+    )
+
+    if total_duplicadas > 0:
+        df_limpo = df.drop_duplicates().copy() # .drop_duplicates apaga cópias duplicadas | "SettingWithCopyWarning" .copy - um novo local independente na meméria é alocado envitando aleteração no csv original
+        print(
+            f"[DATA PREP] Duplicadas removidas. Total de linhas atual: {len(df_limpo)}" # remoção de duplicidade é ecenssial para treinamento de um modelo
+        )
+        return df_limpo
+
+    print("[DATA PREP] Nenhuma linha duplicada detectada.")
+    return df.copy()
+
+def tratar_nulos(df: pd.DataFrame) -> pd.DataFrame: # Aplica imputação pela MEDIANA nas colunas numéricas com dados ausentes.
+    df_imputado = df.copy()
+    colunas_com_nulos = df_imputado.columns[ # colunas_com_nulos recebe apenas os nulos
+        df_imputado.isnull().any() # isnull() gera uma tabela avisando onde esta vazio verdadeiro, depois any() confirma onde é verdadeiro nessa tabela. 
+    ].tolist() # separando o que for confirmado em sua lista
+
+    print("\n--- TRATAMENTO DE VALORES NULOS VIA MEDIANA ---")
+    for coluna in colunas_com_nulos: # roda o total de colunas_com_nulos
+        mediana_valor = df_imputado[coluna].median() # pega o valor mediano apresentado naquela coluna
+        qtd_nulos = df_imputado[coluna].isnull().sum() # quantidade de nulos apresentados
+        df_imputado[coluna] = df_imputado[coluna].fillna(mediana_valor) # vasculha a coluna e sempre que encontra uma célula vazia insere a mediana geral.
+        print(
+            f"Coluna '{coluna}': {qtd_nulos} nulos imputados com a mediana = {mediana_valor}"
+        )
+
+    return df_imputado
+
+def gerar_graficos_outliers(df: pd.DataFrame, pasta_saida: str = "graficos") -> None: # Plota boxplots das variáveis mais propensas a outliers para fundamentar o tratamento.
+    caminho_pasta = Path(pasta_saida)
+    caminho_pasta.mkdir(parents=True, exist_ok=True)
+
+    colunas_foco = ["WarehouseToHome", "DaySinceLastOrder", "Tenure"]
+
+    plt.figure(figsize=(10, 5))
+    sns.boxplot(data=df[colunas_foco], palette="Set2")
+    plt.title("Identificação de Outliers via Boxplot")
+    plt.ylabel("Valores")
+    plt.tight_layout()
+
+    caminho_img = caminho_pasta / "prep_01_boxplots_outliers.png"
+    plt.savefig(caminho_img, dpi=300)
+    plt.close()
+    print(f"[GRÁFICO SALVO] {caminho_img}")
+
