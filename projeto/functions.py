@@ -146,10 +146,10 @@ def gerar_graficos_outliers(df: pd.DataFrame, pasta_saida: str = "graficos") -> 
     caminho_pasta = Path(pasta_saida)
     caminho_pasta.mkdir(parents=True, exist_ok=True)
 
-    colunas_foco = ["WarehouseToHome", "DaySinceLastOrder", "Tenure"]
+    colunas_foco = ["WarehouseToHome", "DaySinceLastOrder", "Tenure"] 
 
-    plt.figure(figsize=(10, 5))
-    sns.boxplot(data=df[colunas_foco], palette="Set2")
+    plt.figure(figsize=(10, 5)) # matplotlib fica por conta da parte gráfica
+    sns.boxplot(data=df[colunas_foco], palette="Set2") # mediana, seaborn cuida dos calculos
     plt.title("Identificação de Outliers via Boxplot")
     plt.ylabel("Valores")
     plt.tight_layout()
@@ -159,3 +159,26 @@ def gerar_graficos_outliers(df: pd.DataFrame, pasta_saida: str = "graficos") -> 
     plt.close()
     print(f"[GRÁFICO SALVO] {caminho_img}")
 
+def tratar_outliers_clipping(df: pd.DataFrame, colunas: list[str]) -> pd.DataFrame: # Aplica clipping (capping) nos limites interquartis (IQR 1.5x) para colunas com discrepâncias extremas. 
+    df_tratado = df.copy()
+    print("\n--- TRATAMENTO DE OUTLIERS VIA CLIPPING (IQR) ---")
+    for col in colunas:
+        q1 = df_tratado[col].quantile(0.25)
+        q3 = df_tratado[col].quantile(0.75)
+        iqr = q3 - q1
+        limite_inferior = q1 - 1.5 * iqr
+        limite_superior = q3 + 1.5 * iqr
+
+        # Aplicar recorte sem descartar clientes
+        valores_antes = (
+            (df_tratado[col] < limite_inferior)
+            | (df_tratado[col] > limite_superior)
+        ).sum()
+        df_tratado[col] = df_tratado[col].clip(lower=limite_inferior, upper=limite_superior)
+        print(f"Coluna '{col}': {valores_antes} valores ajustados aos limites [{limite_inferior:.1f}, {limite_superior:.1f}]")
+
+    return df_tratado
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Fase 3: Feature Engineering (Coluna Calculada)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

@@ -1,5 +1,6 @@
 import os
-from functions import carregar_dados, gerar_graficos_eda, relatorio_estatistico, gerar_graficos_outliers, tratar_duplicadas, tratar_nulos
+from functions import carregar_dados, gerar_graficos_eda, relatorio_estatistico, gerar_graficos_outliers, tratar_duplicadas, tratar_nulos, tratar_outliers_clipping
+
 CAMINHO_BASE = os.path.join(
     "projeto", "data", "E Commerce Dataset - E Comm.csv" # caminho do arquivo
 )
@@ -28,7 +29,15 @@ def main():
     # 3. Análise visual de Outliers
     gerar_graficos_outliers(df_sem_nulos, pasta_saida=PASTA_GRAFICOS)
 
-    
+    # 4. Clipping em colunas com distâncias e durações extremas
+    colunas_outliers = ["WarehouseToHome", "DaySinceLastOrder"]
+    df_preparado = tratar_outliers_clipping(
+        df_sem_nulos, colunas=colunas_outliers
+    )
+
+    print(
+        f"\n[SUCESSO] Base preparada para Engenharia de Features. Total nulos restantes: {df_preparado.isnull().sum().sum()}"
+    )
 
 
 main()
