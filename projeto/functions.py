@@ -182,3 +182,37 @@ def tratar_outliers_clipping(df: pd.DataFrame, colunas: list[str]) -> pd.DataFra
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Fase 3: Feature Engineering (Coluna Calculada)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+def criar_feature_cashback_por_pedido(df: pd.DataFrame) -> pd.DataFrame: # cashback_por_pedido = CashbackAmount / OrderCount
+   
+    df_fe = df.copy()
+
+    # Aplica validação prévia de nulos e proteção contra divisão por zero para evitar contaminação da base com valores inf ou NaN
+
+    # Validação de integridade estatística
+    if (
+        df_fe["OrderCount"].isnull().any()
+        or df_fe["CashbackAmount"].isnull().any()
+    ):
+        raise ValueError( # valores nulos também não são aceitos
+            "Detectados valores nulos nas variáveis de cálculo. Trate os nulos antes do cálculo."
+        )
+
+    # Proteção de negócio caso existisse contagem zerada de pedidos
+    if (df_fe["OrderCount"] == 0).any(): # Modelos KNN quebram em dados com divisão por 0
+        print(
+            "[AVISO] Pedidos iguais a 0 detectados. Ajustando para 1 para evitar divisão por zero."
+        )
+        df_fe["OrderCount"] = df_fe["OrderCount"].replace(0, 1)
+
+    # Cálculo da taxa
+    df_fe["cashback_por_pedido"] = (
+        df_fe["CashbackAmount"] / df_fe["OrderCount"]
+    )
+
+    print("\n--- FASE 3: FEATURE ENGINEERING ---")
+    print(
+        f"[NOVA FEATURE] 'cashback_por_pedido' criada. Média: {df_fe['cashback_por_pedido'].mean():.2f} | Mediana: {df_fe['cashback_por_pedido'].median():.2f}" # calculos da média e a mediana
+    )
+
+    return df_fe
