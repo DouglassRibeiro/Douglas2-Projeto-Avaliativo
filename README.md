@@ -131,6 +131,7 @@ def gerar_graficos_eda(df: pd.DataFrame, pasta_saida: str = "graficos") -> None:
 
 ![Matriz de Correlação de Pearson](projeto/graficos/eda_03_correlacao_pearson.png)
 
+Tomada de Decisão 
 
 1. É visivel nessa analise que há picos incomuns tendo uma descrepancia muito grande em o que é retido, e o que há de evasão. É mostrado um desbalanceamento Severo: A base conta com cerca de 83,2% de clientes ativos (classe 0) e apenas 16,8% evadidos (classe 1). Treinar modelos diretamente sem balanceamento fará o algoritmo priorizar a classe majoritária, gerando falsos negativos críticos.
 
@@ -169,7 +170,7 @@ def gerar_graficos_eda(df: pd.DataFrame, pasta_saida: str = "graficos") -> None:
 ---
 
 - Por que usar mediana e não média?
-- **Foi confirmado altos valores longe do normal (cauda longa à direita), apenas a divisão traria uma média fora do comum
+- Foi confirmado altos valores longe do normal (cauda longa à direita), apenas a divisão traria uma média fora do comum
 - O que deixa a analise proporcional da mediana como a melhor escolha tendo um padrão melhor a ser ponderado
 
 ```python
@@ -191,8 +192,8 @@ def gerar_graficos_eda(df: pd.DataFrame, pasta_saida: str = "graficos") -> None:
     return df_imputado
 ```
 - **Nota:** 
-    - Adicionar a mediana geral onde nulos são encontrados seria um problema se o cliente especifico já não fosse tão ativo.
-    - A mediana geral da base para OrderCount é 2.0.
+    - Foi adicionado a mediana geral onde se nulos fossem encontrados seria um problema.
+    - Porém a mediana geral da base para OrderCount é 2.0.
     - Ao imputar 2.0, estamos atribuindo 2 pedidos para esse cliente, o que gera uma distorção controlada, mas ainda assim artificial.
     - Se esse cliente fosse alguém que comprou apenas 1 vez (ou estava inativo há muito tempo), estaríamos dobrando seu volume transacional teórico.
         - Esse não foi um requisito levantado pelo projeto, vou aceitar um erro residual para proteger a escala global dos algortimos preditivos.
@@ -252,6 +253,44 @@ def tratar_outliers_clipping(df: pd.DataFrame, colunas: list[str]) -> pd.DataFra
 
 - **NOTA:**
     - KNN (K-Nearest Neighbors): Classifica com base na similaridade geométrica dos k vizinhos mais próximos. Por calcular distâncias euclidianas em linha reta, valores discrepantes (outliers) distorcem o espaço vetorial. Nisso o clipping apara essas anomalias externas, isso se mostra visível no limiar das antenas  do matplot, delimitando a variação aceitável sem descartar clientes.
-    - Árvore de Decisão (Decision Tree): Organiza-se como um fluxograma hierárquico de divisões binárias ("Se o valor for maior que x..."). Como analisa apenas se um valor está acima ou abaixo de um ponto de corte ordenado, a magnitude de um outlier não distorce a partição, dispensando tanto o clipping agressivo quanto o escalonamento (trabalha em uma arvore de sim ou não).
+    - Árvore de Decisão (Decision Tree): Organiza-se como um fluxograma hierárquico de divisões binárias ("Se o valor for maior que x..."). Como analisa apenas se um valor está acima ou abaixo de um ponto de corte ordenado, a magnitude de um outlier não distorce a partição, dispensando tanto a agressividade do clipping agressivo quanto o escalonamento (trabalha em uma arvore de sim ou não).
 
 ## Fase 3: Feature Engineering (Coluna Claculadora)
+
+- Organizando a nova variável de negócio exigida: cashback_por_pedido = CashbackAmount / OrderCount | Aplicada validação prévia de nulos e proteção contra divisão por zero evitando contaminação da base por valores infinitos ou NaN.
+    - Nisso se um cliente tem um cashback_por_pedido muito alto e mesmo assim dá Churn = 1, a empresa gastou muita margem tentando reter um cliente que saiu da mesma forma (prejuízo em dobro). Agora se o cliente tem cashback_por_pedido baixo e alta fidelidade, ele é altamente lucrativo.
+
+```python
+
+def criar_feature_cashback_por_pedido(df: pd.DataFrame) -> pd.DataFrame:
+    
+    df_fe = df.copy()
+
+    # Validação de integridade estatística
+    if (
+        df_fe["OrderCount"].isnull().any()
+        or df_fe["CashbackAmount"].isnull().any()
+    ):
+        raise ValueError(
+            "Detectados valores nulos nas variáveis de cálculo. Trate os nulos antes do cálculo."
+        )
+
+    # Proteção de negócio caso existisse contagem zerada de pedidos
+    if (df_fe["OrderCount"] == 0).any():
+        print(
+            "[AVISO] Pedidos iguais a 0 detectados. Ajustando para 1 para evitar divisão por zero."
+        )
+        df_fe["OrderCount"] = df_fe["OrderCount"].replace(0, 1)
+
+    # Cálculo da taxa
+    df_fe["cashback_por_pedido"] = (
+        df_fe["CashbackAmount"] / df_fe["OrderCount"]
+    )
+
+    print("\n--- FASE 3: FEATURE ENGINEERING ---")
+    print(
+        f"[NOVA FEATURE] 'cashback_por_pedido' criada. Média: {df_fe['cashback_por_pedido'].mean():.2f} | Mediana: {df_fe['cashback_por_pedido'].median():.2f}" # MÉDIA E MEDIANA
+    )
+
+    return df_fe
+```

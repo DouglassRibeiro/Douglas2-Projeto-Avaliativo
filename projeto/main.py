@@ -1,5 +1,5 @@
 import os
-from functions import carregar_dados, gerar_graficos_eda, relatorio_estatistico, gerar_graficos_outliers, tratar_duplicadas, tratar_nulos, tratar_outliers_clipping
+from functions import carregar_dados, criar_feature_cashback_por_pedido, gerar_graficos_eda, relatorio_estatistico, gerar_graficos_outliers, tratar_duplicadas, tratar_nulos, tratar_outliers_clipping
 
 CAMINHO_BASE = os.path.join(
     "projeto", "data", "E Commerce Dataset - E Comm.csv" # caminho do arquivo
@@ -35,9 +35,12 @@ def main():
         df_sem_nulos, colunas=colunas_outliers
     )
 
+    print("\n==================================================")
+    print("FASE 3: FEATURE ENGINEERING (COLUNA CALCULADA)")
+    print("==================================================")
+    df_final_features = criar_feature_cashback_por_pedido(df_preparado)
     print(
-        f"\n[SUCESSO] Base preparada para Engenharia de Features. Total nulos restantes: {df_preparado.isnull().sum().sum()}"
+        f"[INFO] Dataset pronto para split e escalonamento. Total de colunas: {df_final_features.shape[1]}"
     )
-
 
 main()
