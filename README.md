@@ -294,3 +294,126 @@ def criar_feature_cashback_por_pedido(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_fe
 ```
+
+## Fase 4: Separação, Balanceamento e Escalonamento Seguro
+
+- Aplica StandardScaler exclusivamente para o algoritmo KNN (fit_transform no treino e transform no teste).
+- As Árvores de Decisão não utilizam esta saída por serem invariantes a escalas monotônicas.
+---
+- Unifica Strings com grafias diferentes que representam exatamente a mesma entidade no mundo real, o que é feito em mapeamentos = {...}
+- Não queremos colunas a mais representando a mesma coisa, isso fragmentaria os dados
+
+```python
+def padronizar_categorias(df: pd.DataFrame) -> pd.DataFrame: # Padroniza nomeclaturas duplicadas na mesma colula.
+    df_padrao = df.copy()
+    # categorias que representam a mesma entidade não devem ter colunas separadas
+    mapeamentos = { 
+        "PreferredLoginDevice": {"Phone": "Mobile Phone"},
+        "PreferredPaymentMode": {
+            "CC": "Credit Card",
+            "COD": "Cash on Delivery",
+        },
+        "PreferedOrderCat": {"Mobile": "Mobile Phone"},
+    }
+    for col, correcoes in mapeamentos.items():
+        if col in df_padrao.columns:
+            df_padrao[col] = df_padrao[col].replace(correcoes)
+
+    return df_padrao
+```
+
+---
+
+- **One-Hot Encoding** - convertendo variaveis textuais em dados binário
+    - ```df_modelo.drop(columns=["CustomerID"])``` CostumerID esta representando o ID do cliente sendo apenas um número sequencial arbitrário
+        - Se o modelo enxergasse o ID, ele poderia memorizar que clientes com determinado ID saíram, decorando números em vez de aprender padrões reais de comportamento
+
+```python
+def preparar_features_encoding(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]: # One-Hot Encoding - convertendo variaveis textuais em dados binário
+    df_modelo = df.copy()
+
+    # Descartando chave primária sem valor preditivo
+    if "CustomerID" in df_modelo.columns:
+        df_modelo = df_modelo.drop(columns=["CustomerID"]) # descarte CustomerID, aprenda comportamentos e não IDs
+
+    df_modelo = padronizar_categorias(df_modelo) # categorias unicas
+
+    # Separação X e y - perguntas X | respostas y
+    X = df_modelo.drop(columns=["Churn"])
+    y = df_modelo["Churn"]
+
+    # One-Hot Encoding seguro
+    X_encoded = pd.get_dummies(X, drop_first=True, dtype=int) # Pega colunas geradas
+
+    print("\n--- FASE 4: ENCODING E PREPARAÇÃO ---")
+    print(
+        f"[ENCODING] Features preditoras: {X_encoded.shape[1]} colunas geradas."
+    )
+
+    return X_encoded, y
+```
+
+---
+
+- Divide os dados em Treino e Teste (80% | 20%) preservando a proporção de classes, e aplica o SMOTE exclusivamente no treino
+
+```python
+def split_estratificado_balanceado(X: pd.DataFrame, y: pd.Series, test_size: float = 0.20, random_state: int = 42) -> tuple: # Aplicr o SMOTE
+    # organizar proteção absoluta contra Data Leakage.
+    # random_state: int = 42 é nível de sorteio garantindo reprodutibilidade dos resultados
+
+    # 1. Divisão Estratificada - separacao para treino
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y # stratify=y força o sorteio a manter a exata mesma taxa de Churn (rotatividade de clientes em ambos os conjuntos, os 16,8%)
+    )
+
+    print(
+        f"[SPLIT] Treino original: {X_train.shape[0]} amostras | Teste original: {X_test.shape[0]} amostras"
+    )
+    print(f"[SPLIT] Distribuição y_train: {dict(y_train.value_counts())}")
+    print(
+        f"[SPLIT] Distribuição y_test (intocada): {dict(y_test.value_counts())}"
+    )
+
+    # 2. Reamostragem estritamente no treino (Anti-Leakage)
+    smote = SMOTE(random_state=random_state) # os novos exemplos sintéticos gerados com base no Churn
+    X_train_res, y_train_res = smote.fit_resample(X_train, y_train) # garante que o SMOTE seja aplicado estritamente e apenas nos dados de treino
+
+    print(
+        f"[SMOTE] Treino balanceado: {X_train_res.shape[0]} amostras (Classe 0: {(y_train_res == 0).sum()} | Classe 1: {(y_train_res == 1).sum()})"
+    )
+
+    return X_train_res, X_test, y_train_res, y_test
+```
+
+---
+
+1. Sensibilidade do KNN (Distância Geométrica):
+    - O KNN calcula distâncias em linha reta (distância euclidiana) no espaço vetorial.
+    - Variáveis contínuas de grande magnitude (como CashbackAmount, de 0 a 325) teriam um peso centenas de vezes superior às variáveis binárias (de 0 a 1), fazendo com que o algoritmo ignorasse praticamente todo o resto da base.
+    - O ```StandardScaler``` padroniza todas as variáveis para média 0 e desvio-padrão 1, impedindo que colunas com valores nominais altos dominem o cálculo de vizinhança.
+
+2. Robustez da Árvore de Decisão (Partições Monotónicas):
+    - A Árvore de Decisão avalia cada variável de forma isolada, criando regras binárias de corte ordenado (ex.: ```CashbackAmount <= 150``` ou ```Gender_Male <= 0.5```).
+    - Transformar a escala dos dados não altera a ordem dos valores nem a distribuição das classes nas folhas.
+    - Portanto, treinar a Árvore com dados escalonados é matematicamente desnecessário, sendo uma boa prática corporativa alimentar o modelo com os dados não escalonados.
+
+```python
+def escalonar_dados_knn(X_train: pd.DataFrame, X_test: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, StandardScaler]:
+    
+    scaler = StandardScaler()
+    X_train_knn = scaler.fit_transform(X_train)
+    X_test_knn = scaler.transform(X_test)
+
+    print(
+        "[SCALER] Standard Scaler aplicado com segurança exclusivamente para uso no KNN."
+    )
+
+    return X_train_knn, X_test_knn, scaler
+```
+
+- **Nota:**
+    - ```StandardScaler``` não descarta nada, aplica a fórmula estatística do **Z-score** em cada elemento x de uma coluna.
+    - Quem tem exatamente o valor médio vira 0; quem estava acima da média vira um número positivo; quem estava abaixo vira um número negativo.
+    - Ajustando assim o espalhamento dos dados. O resultado passa a indicar quantos desvios-padrão aquele cliente está distante da média. Por definição matemática, ao dividir pelo próprio desvio-padrão da coluna, a nova variância e o novo desvio-padrão tornam-se rigorosamente iguais a 1.
+    - z = (x - μ) / σ > demorei entender.
