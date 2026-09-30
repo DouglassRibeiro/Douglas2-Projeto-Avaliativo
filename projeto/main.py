@@ -1,6 +1,17 @@
 import os
-from functions import carregar_dados, criar_feature_cashback_por_pedido, gerar_graficos_eda, relatorio_estatistico, gerar_graficos_outliers, tratar_duplicadas, tratar_nulos, tratar_outliers_clipping
-
+from functions import (
+    carregar_dados,
+    criar_feature_cashback_por_pedido,
+    escalonar_dados_knn,
+    gerar_graficos_eda,
+    gerar_graficos_outliers,
+    preparar_features_encoding,
+    relatorio_estatistico,
+    split_estratificado_balanceado,
+    tratar_duplicadas,
+    tratar_nulos,
+    tratar_outliers_clipping,
+)
 CAMINHO_BASE = os.path.join(
     "projeto", "data", "E Commerce Dataset - E Comm.csv" # caminho do arquivo
 )
@@ -38,9 +49,29 @@ def main():
     print("\n==================================================")
     print("FASE 3: FEATURE ENGINEERING (COLUNA CALCULADA)")
     print("==================================================")
-    df_final_features = criar_feature_cashback_por_pedido(df_preparado)
+    df_fe = criar_feature_cashback_por_pedido(df_preparado)
     print(
-        f"[INFO] Dataset pronto para split e escalonamento. Total de colunas: {df_final_features.shape[1]}"
+        f"[INFO] Dataset pronto para split e escalonamento. Total de colunas: {df_fe.shape[1]}"
     )
 
+    print("\n==================================================")
+    print("FASE 4: SEPARAÇÃO, BALANCEAMENTO E ESCALONAMENTO SEGURO")
+    print("==================================================")
+    X, y = preparar_features_encoding(df_fe)
+
+    # Split estratificado + SMOTE restrito ao treino
+    X_train_res, X_test, y_train_res, y_test = split_estratificado_balanceado(
+        X, y, test_size=0.20, random_state=42
+    )
+
+    # Escalonamento apenas para o KNN
+    X_train_knn, X_test_knn, scaler = escalonar_dados_knn(
+        X_train_res, X_test
+    )
+
+    print("\n[CHECKPOINT] Dados preparados para a Fase 5 (Modelagem):")
+    print(f" -> Conjunto de Treino para Árvore (não escalonado): {X_train_res.shape}")
+    print(f" -> Conjunto de Treino para KNN (escalonado): {X_train_knn.shape}")
+    print(f" -> Conjunto de Teste real (intocado): {X_test.shape}")
+    
 main()

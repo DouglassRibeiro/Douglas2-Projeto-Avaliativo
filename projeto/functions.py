@@ -1,7 +1,12 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import seaborn as sns
+from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Fase 1: Analise Exploratória de Dados (EDA)
@@ -216,3 +221,90 @@ def criar_feature_cashback_por_pedido(df: pd.DataFrame) -> pd.DataFrame: # cashb
     )
 
     return df_fe
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Fase 4: Separação, Balanceamento e Escalonamento Seguro
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+def padronizar_categorias(df: pd.DataFrame) -> pd.DataFrame: # Padroniza nomeclaturas duplicadas na mesma colula.
+    df_padrao = df.copy()
+    # categorias que representam a mesma entidade não devem ter colunas separadas
+    mapeamentos = { 
+        "PreferredLoginDevice": {"Phone": "Mobile Phone"},
+        "PreferredPaymentMode": {
+            "CC": "Credit Card",
+            "COD": "Cash on Delivery",
+        },
+        "PreferedOrderCat": {"Mobile": "Mobile Phone"},
+    }
+    for col, correcoes in mapeamentos.items():
+        if col in df_padrao.columns:
+            df_padrao[col] = df_padrao[col].replace(correcoes)
+
+    return df_padrao
+
+
+def preparar_features_encoding(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]: # One-Hot Encoding - convertendo variaveis textuais em dados binário
+    # Não esquecer de Descarta CustomerID - não estamos analizando ids especificos, e sim o valor que o tipo de cliente representa apredendo padrões que levam a isso
+    df_modelo = df.copy()
+
+    # Descartar chave primária sem valor preditivo
+    if "CustomerID" in df_modelo.columns:
+        df_modelo = df_modelo.drop(columns=["CustomerID"]) # descarte CustomerID, aprenda comportamentos e não IDs
+
+    df_modelo = padronizar_categorias(df_modelo) # categorias unicas
+
+    # Separação X e y - perguntas X | respostas y
+    X = df_modelo.drop(columns=["Churn"])
+    y = df_modelo["Churn"]
+
+    # One-Hot Encoding seguro
+    X_encoded = pd.get_dummies(X, drop_first=True, dtype=int) # Pega colunas geradas
+
+    print("\n--- FASE 4: ENCODING E PREPARAÇÃO ---")
+    print(
+        f"[ENCODING] Features preditoras: {X_encoded.shape[1]} colunas geradas."
+    )
+
+    return X_encoded, y
+
+
+def split_estratificado_balanceado(X: pd.DataFrame, y: pd.Series, test_size: float = 0.20, random_state: int = 42) -> tuple: # Divide os dados em Treino e Teste (80% | 20%) preservando a proporção de classes, e aplica o SMOTE exclusivamente no treino
+    # organizar proteção absoluta contra Data Leakage.
+    # random_state: int = 42 é nível de sorteio garantindo reprodutibilidade dos resultados
+
+    # 1. Divisão Estratificada - separacao para treino
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y # stratify=y força o sorteio a manter a exata mesma taxa de Churn (rotatividade de clientes em ambos os conjuntos, os 16,8%)
+    )
+
+    print(
+        f"[SPLIT] Treino original: {X_train.shape[0]} amostras | Teste original: {X_test.shape[0]} amostras"
+    )
+    print(f"[SPLIT] Distribuição y_train: {dict(y_train.value_counts())}")
+    print(
+        f"[SPLIT] Distribuição y_test (intocada): {dict(y_test.value_counts())}"
+    )
+
+    # 2. Reamostragem estritamente no treino (Anti-Leakage)
+    smote = SMOTE(random_state=random_state) # os novos exemplos sintéticos gerados com base no Churn
+    X_train_res, y_train_res = smote.fit_resample(X_train, y_train) # garante que o SMOTE seja aplicado estritamente e apenas nos dados de treino
+
+    print(
+        f"[SMOTE] Treino balanceado: {X_train_res.shape[0]} amostras (Classe 0: {(y_train_res == 0).sum()} | Classe 1: {(y_train_res == 1).sum()})"
+    )
+
+    return X_train_res, X_test, y_train_res, y_test
+
+
+def escalonar_dados_knn(X_train: pd.DataFrame, X_test: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, StandardScaler]:
+    
+    scaler = StandardScaler()
+    X_train_knn = scaler.fit_transform(X_train)
+    X_test_knn = scaler.transform(X_test)
+
+    print(
+        "[SCALER] Standard Scaler aplicado com segurança exclusivamente para uso no KNN."
+    )
+
+    return X_train_knn, X_test_knn, scaler
