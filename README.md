@@ -5,7 +5,7 @@
 ## Fase 1: Análise exploratória (EDA)
 
 - ```if``` Recebe o endereço do arquivo em formato de texto, converte em Path e confirma se o caminho existe, caso não, adiciona uma menssagem de erro sem travar todo processamento.
-- ```return df``` retorna uma cópia pra memória
+- ```return df``` retorna uma cópia pra memória.
 
 ```python
 def carregar_dados(caminho_csv: str) -> pd.DataFrame: # Carrega o dataset e exibe a dimensão inicial.
@@ -21,8 +21,8 @@ def carregar_dados(caminho_csv: str) -> pd.DataFrame: # Carrega o dataset e exib
 
 ---
 
-- ```df.info``` > exibi tipos de todas colunas
-- ```df.isnull().sum()``` > isola e soma somente os valores nulos
+- ```df.info``` > exibi tipos de todas colunas.
+- ```df.isnull().sum()``` > isola e soma somente os valores nulos.
 - ```df.describe().T``` > gera uma estatistica descritiva completa. Exibindo colunas ao invés de linhas
 
 ```python
@@ -143,8 +143,8 @@ Tomada de Decisão
 
 ## Fase 2: Tratamento e Limpeza
 
-- Removendo duplicidades organizando o mesmo peso há diferentes clientes, garantindo que o algoritimo de atenção igual
-- Pra garantir que ocorra aprendizado a remoção de duplicidade é essencial
+- Removendo duplicidades organizando o mesmo peso há diferentes clientes, garantindo que o algoritimo de atenção igual.
+- Pra garantir que ocorra aprendizado a remoção de duplicidade é essencial.
 ```python
     def tratar_duplicadas(df: pd.DataFrame) -> pd.DataFrame: # Verifica e remove linhas duplicadas para evitar redundância e viés.
         total_duplicadas = df.duplicated().sum() 
@@ -170,8 +170,8 @@ Tomada de Decisão
 ---
 
 - Por que usar mediana e não média?
-- Foi confirmado altos valores longe do normal (cauda longa à direita), apenas a divisão traria uma média fora do comum
-- O que deixa a analise proporcional da mediana como a melhor escolha tendo um padrão melhor a ser ponderado
+- Foi confirmado altos valores longe do normal (cauda longa à direita), apenas a divisão traria uma média fora do comum.
+- O que deixa a analise proporcional da mediana como a melhor escolha tendo um padrão melhor a ser ponderado.
 
 ```python
     def tratar_nulos(df: pd.DataFrame) -> pd.DataFrame: # aplica imputação pela MEDIANA nas colunas numéricas com dados ausentes.
@@ -297,11 +297,8 @@ def criar_feature_cashback_por_pedido(df: pd.DataFrame) -> pd.DataFrame:
 
 ## Fase 4: Separação, Balanceamento e Escalonamento Seguro
 
-- Aplica StandardScaler exclusivamente para o algoritmo KNN (fit_transform no treino e transform no teste).
-- As Árvores de Decisão não utilizam esta saída por serem invariantes a escalas monotônicas.
----
-- Unifica Strings com grafias diferentes que representam exatamente a mesma entidade no mundo real, o que é feito em mapeamentos = {...}
-- Não queremos colunas a mais representando a mesma coisa, isso fragmentaria os dados
+- Unifica Strings com grafias diferentes que representam exatamente a mesma entidade no mundo real, o que é feito em mapeamentos = {...}.
+- Não queremos colunas a mais representando a mesma coisa, isso fragmentaria os dados.
 
 ```python
 def padronizar_categorias(df: pd.DataFrame) -> pd.DataFrame: # Padroniza nomeclaturas duplicadas na mesma colula.
@@ -325,8 +322,8 @@ def padronizar_categorias(df: pd.DataFrame) -> pd.DataFrame: # Padroniza nomecla
 ---
 
 - **One-Hot Encoding** - convertendo variaveis textuais em dados binário
-    - ```df_modelo.drop(columns=["CustomerID"])``` CostumerID esta representando o ID do cliente sendo apenas um número sequencial arbitrário
-        - Se o modelo enxergasse o ID, ele poderia memorizar que clientes com determinado ID saíram, decorando números em vez de aprender padrões reais de comportamento
+    - ```df_modelo.drop(columns=["CustomerID"])``` CostumerID esta representando o ID do cliente sendo apenas um número sequencial arbitrário.
+        - Se o modelo enxergasse o ID, ele poderia memorizar que clientes com determinado ID saíram, decorando números em vez de aprender padrões reais de comportamento.
 
 ```python
 def preparar_features_encoding(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]: # One-Hot Encoding - convertendo variaveis textuais em dados binário
@@ -355,7 +352,7 @@ def preparar_features_encoding(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Serie
 
 ---
 
-- Divide os dados em Treino e Teste (80% | 20%) preservando a proporção de classes, e aplica o SMOTE exclusivamente no treino
+- Divide os dados em Treino e Teste (80% | 20%) preservando a proporção de classes, e aplica o SMOTE exclusivamente no treino.
 
 ```python
 def split_estratificado_balanceado(X: pd.DataFrame, y: pd.Series, test_size: float = 0.20, random_state: int = 42) -> tuple: # Aplicr o SMOTE
