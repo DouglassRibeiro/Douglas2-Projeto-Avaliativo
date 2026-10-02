@@ -568,3 +568,29 @@ def gerar_graficos_overfitting( df_knn: pd.DataFrame, df_arvore: pd.DataFrame, p
 ```
 
 ![Subplot (Curvas Overfitting)](projeto/graficos/mod_01_curvas_overfitting.png)
+
+**NOTA:**
+
+#### Overfitting > Voltando não posso deixa de comentar, o modelo aprende atinge métricas quase perfeitas no treino, mas perde a capacidade de generalizar quando recebe dados reais.
+- O exemplo do estudante e a prova se torna uma ótima analogia.
+
+### Arvore de decisão (Sim ou Não):
+
+- max_depth=3 (Subajuste / Underfitting): A árvore é rasa demais. Ela só pode fazer 3 perguntas sucessivas. É simples demais para entender clientes complexos
+
+- max_depth=None (Profundidade Ilimitada - Overfitting Puro): A árvore tem permissão para fazer perguntas infinitas até isolar cada linha de cliente em uma folha exclusiva.
+
+    - Por isso o resultado dá Acurácia de Treino = 1.0000 (100%).
+
+    - Ela decorou casos específicos (ex.: "cliente de 25 anos, com 3 aparelhos, que mora a 14 km e reclamou numa terça-feira"). No ambiente de produção, clientes nunca se repetem com essas exatas características.
+
+- max_depth=7 (Ponto de Equilíbrio): A árvore consegue capturar relações não-lineares relevantes sem criar regras superespecíficas para ruídos individuais.
+
+### KNN - escolhe o vizinho mais pŕoximo:
+- K=3 (Alta Sensibilidade / Risco de Overfitting Local): O modelo toma a decisão consultando apenas 3 vizinhos imediatos. Se 2 desses 3 forem clientes atípicos ou ruídos gerados artificialmente pelo SMOTE, o modelo comete um erro primário. A acurácia de treino fica em ~99,4% porque o ponto consulta quase a si mesmo.
+
+- K=9 (Suavização da Fronteira): O modelo exige o consenso de 9 vizinhos para decidir se um cliente vai entrar em Churn ou não. Isso dilui o impacto de ruídos locais e gera uma fronteira de decisão mais estável para produção. 
+
+### 3. Evidência Visual das Curvas de Aprendizado
+- O gráfico gerado (`mod_01_curvas_overfitting.png`) demonstra a convergência das métricas e o monitoramento contínuo da lacuna (*gap*) entre Treino e Teste.
+
