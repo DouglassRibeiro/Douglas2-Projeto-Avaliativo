@@ -252,7 +252,7 @@ def tratar_outliers_clipping(df: pd.DataFrame, colunas: list[str]) -> pd.DataFra
 ![Boxplot (Diagrama de Caixa)](projeto/graficos/prep_01_boxplots_outliers.png)
 
 - **NOTA:**
-    - KNN (K-Nearest Neighbors): Classifica com base na similaridade geométrica dos k vizinhos mais próximos. Por calcular distâncias euclidianas em linha reta, valores discrepantes (outliers) distorcem o espaço vetorial. Nisso o clipping apara essas anomalias externas, isso se mostra visível no limiar das antenas  do matplot, delimitando a variação aceitável sem descartar clientes.
+    - KNN (K-Nearest Neighbors): Classifica com base na similaridade geométrica dos k vizinhos mais próximos por meio da distância euclidiana (distância em linha reta entre observações no espaço vetorial). Valores discrepantes (outliers) distorceriam desproporcionalmente essa métrica de distância. Por isso, utilizou-se o corte estatístico do boxplot (IQR nas antenas) como limiar para o clipping, contendo as anomalias externas na borda aceitável da distribuição e protegendo o cálculo de vizinhança sem descartar nenhum cliente da base.
     - Árvore de Decisão (Decision Tree): Organiza-se como um fluxograma hierárquico de divisões binárias ("Se o valor for maior que x..."). Como analisa apenas se um valor está acima ou abaixo de um ponto de corte ordenado, a magnitude de um outlier não distorce a partição, dispensando tanto a agressividade do clipping agressivo quanto o escalonamento (trabalha em uma arvore de sim ou não).
 
 ## Fase 3: Feature Engineering (Coluna Claculadora)
@@ -414,3 +414,157 @@ def escalonar_dados_knn(X_train: pd.DataFrame, X_test: pd.DataFrame) -> tuple[np
     - Quem tem exatamente o valor médio vira 0; quem estava acima da média vira um número positivo; quem estava abaixo vira um número negativo.
     - Ajustando assim o espalhamento dos dados. O resultado passa a indicar quantos desvios-padrão aquele cliente está distante da média. Por definição matemática, ao dividir pelo próprio desvio-padrão da coluna, a nova variância e o novo desvio-padrão tornam-se rigorosamente iguais a 1.
     - z = (x - μ) / σ > demorei entender.
+
+## Fase 5: Modelagem e Validação (O Desafio do Overfitting)
+
+- Avaliação do KNN para múltiplos valores de K organizando Treino e Teste simultaneamente.
+    - Classificando novas instâncias de pontos vizinhos mais próximos
+
+```python
+def otimizar_knn(X_train: np.ndarray, y_train: pd.Series, X_test: np.ndarray, y_test: pd.Series, k_valores: list[int] = [3, 5, 7, 9]) -> pd.DataFrame:
+    resultados = []
+
+    print("\n--- EXPERIMENTAÇÃO KNN: MONITORAMENTO DE OVERFITTING ---")
+
+    for k in k_valores: # laço de repetição iterando pela lista de hiperparâmetros exigida.
+        modelo = KNeighborsClassifier(n_neighbors=k) # Instancia o estimador definindo a quantidade de vizinhos que terão direito a voto na classificação.
+        modelo.fit(X_train, y_train) # Carrega o espaço vetorial com os dados de treino escalonados
+
+        # Previsões em treino e teste
+        y_pred_train = modelo.predict(X_train)
+        y_pred_test = modelo.predict(X_test)
+
+        # Calculo - taixa de acerto global
+        acc_train = accuracy_score(y_train, y_pred_train)
+        acc_test = accuracy_score(y_test, y_pred_test)
+        f1_train = f1_score(y_train, y_pred_train)
+        f1_test = f1_score(y_test, y_pred_test)
+
+
+        # O termômetro do Overfitting.
+        gap_acc = (acc_train - acc_test) * 100 # Se o treino estiver em 99% e o teste em 85%, o gap é de 14%, evidenciando sobreajuste severo.
+
+        resultados.append(
+            {
+                "Parametro": f"K={k}",
+                "Valor": k,
+                "Acc_Treino": acc_train,
+                "Acc_Teste": acc_test,
+                "F1_Treino": f1_train,
+                "F1_Teste": f1_test,
+                "Gap_Overfitting_Acc(%)": gap_acc,
+            }
+        )
+
+    df_res = pd.DataFrame(resultados)
+    print(df_res.to_string(index=False))
+    return df_res
+```
+
+---
+
+- Agora avaliação da Arvore de Decisão para múltiplos valores de K organizando Treino e Teste simultaneamente.
+    - Necessario impor limite para não acabar apenas como uma decisão.
+    - Exige 100% de precisão no treino decorando casos particulares, mas perde a capacidade de prever novos clientes no teste.
+
+```python
+def otimizar_arvore(X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series, depth_valores: list = [3, 5, 7, None] ) -> pd.DataFrame: 
+    
+    resultados = []
+
+    print("\n--- EXPERIMENTAÇÃO ÁRVORE: MONITORAMENTO DE OVERFITTING ---")
+    for depth in depth_valores:
+        nome_param = f"max_depth={depth}"
+        modelo = DecisionTreeClassifier(max_depth=depth, random_state=42)
+        modelo.fit(X_train, y_train)
+
+        y_pred_train = modelo.predict(X_train)
+        y_pred_test = modelo.predict(X_test)
+
+        acc_train = accuracy_score(y_train, y_pred_train)
+        acc_test = accuracy_score(y_test, y_pred_test)
+        f1_train = f1_score(y_train, y_pred_train)
+        f1_test = f1_score(y_test, y_pred_test)
+
+        gap_acc = (acc_train - acc_test) * 100
+
+        resultados.append(
+            {
+                "Parametro": nome_param,
+                "Valor": str(depth),
+                "Acc_Treino": acc_train,
+                "Acc_Teste": acc_test,
+                "F1_Treino": f1_train,
+                "F1_Teste": f1_test,
+                "Gap_Overfitting_Acc(%)": gap_acc,
+            }
+        )
+
+    df_res = pd.DataFrame(resultados)
+    print(df_res.to_string(index=False))
+    return df_res
+```
+
+---
+
+- Curvas overfitting:
+
+```python
+def gerar_graficos_overfitting( df_knn: pd.DataFrame, df_arvore: pd.DataFrame, pasta_saida: str = "graficos" ) -> None: # Plota as curvas de acurácia de Treino vs. Teste para comprovar visualmente o diagnóstico de overfitting.
+    caminho_pasta = Path(pasta_saida)
+    caminho_pasta.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Curva KNN
+    axes[0].plot(
+        df_knn["Valor"],
+        df_knn["Acc_Treino"],
+        marker="o",
+        label="Treino (Escalonado)",
+        color="#e74c3c",
+    )
+    axes[0].plot(
+        df_knn["Valor"],
+        df_knn["Acc_Teste"],
+        marker="s",
+        label="Teste (Generalização)",
+        color="#2b5c8f",
+    )
+    axes[0].set_title("KNN: Efeito do Hiperparâmetro K no Overfitting")
+    axes[0].set_xlabel("Número de Vizinhos (K)")
+    axes[0].set_ylabel("Acurácia")
+    axes[0].legend()
+    axes[0].grid(True)
+
+    # Curva Árvore
+    axes[1].plot(
+        df_arvore["Valor"],
+        df_arvore["Acc_Treino"],
+        marker="o",
+        label="Treino (Balanceado)",
+        color="#e74c3c",
+    )
+    axes[1].plot(
+        df_arvore["Valor"],
+        df_arvore["Acc_Teste"],
+        marker="s",
+        label="Teste (Generalização)",
+        color="#27ae60",
+    )
+    axes[1].set_title(
+        "Árvore de Decisão: Efeito de max_depth no Overfitting"
+    )
+    axes[1].set_xlabel("Profundidade Máxima (max_depth)")
+    axes[1].set_ylabel("Acurácia")
+    axes[1].legend()
+    axes[1].grid(True)
+
+    plt.tight_layout()
+    caminho_img = caminho_pasta / "mod_01_curvas_overfitting.png"
+    plt.savefig(caminho_img, dpi=300)
+    plt.close()
+    print(f"\n[GRÁFICO SALVO] {caminho_img}")
+```
+
+![Subplot (Curvas Overfitting)](projeto/graficos/mod_01_curvas_overfitting.png)
