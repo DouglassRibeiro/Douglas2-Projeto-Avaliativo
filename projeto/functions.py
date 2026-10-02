@@ -6,6 +6,9 @@ import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -308,3 +311,141 @@ def escalonar_dados_knn(X_train: pd.DataFrame, X_test: pd.DataFrame) -> tuple[np
     )
 
     return X_train_knn, X_test_knn, scaler
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Fase 5: Modelagem e Validação (O Desafio do Overfitting)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Treina e avalia o KNN para múltiplos valores de K em Treino e Teste simultaneamente.
+def otimizar_knn(X_train: np.ndarray, y_train: pd.Series, X_test: np.ndarray, y_test: pd.Series, k_valores: list[int] = [3, 5, 7, 9]) -> pd.DataFrame: 
+
+    resultados = []
+
+    print("\n--- EXPERIMENTAÇÃO KNN: MONITORAMENTO DE OVERFITTING ---")
+
+    for k in k_valores: # laço de repetição iterando pela lista de hiperparâmetros exigida.
+        modelo = KNeighborsClassifier(n_neighbors=k) # Instancia o estimador definindo a quantidade de vizinhos que terão direito a voto na classificação.
+        modelo.fit(X_train, y_train) # Carrega o espaço vetorial com os dados de treino escalonados
+
+        # Previsões em treino e teste
+        y_pred_train = modelo.predict(X_train)
+        y_pred_test = modelo.predict(X_test)
+
+        # Calculo - taixa de acerto global
+        acc_train = accuracy_score(y_train, y_pred_train)
+        acc_test = accuracy_score(y_test, y_pred_test)
+        f1_train = f1_score(y_train, y_pred_train)
+        f1_test = f1_score(y_test, y_pred_test)
+
+
+        # O termômetro do Overfitting.
+        gap_acc = (acc_train - acc_test) * 100 # Se o treino estiver em 99% e o teste em 85%, o gap é de 14%, evidenciando sobreajuste severo.
+
+        resultados.append(
+            {
+                "Parametro": f"K={k}",
+                "Valor": k,
+                "Acc_Treino": acc_train,
+                "Acc_Teste": acc_test,
+                "F1_Treino": f1_train,
+                "F1_Teste": f1_test,
+                "Gap_Overfitting_Acc(%)": gap_acc,
+            }
+        )
+
+    df_res = pd.DataFrame(resultados)
+    print(df_res.to_string(index=False))
+    return df_res
+
+# Treina e avalia a Arvore de decisão para múltiplos valores de K em Treino e Teste simultaneamente.
+def otimizar_arvore(X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series, depth_valores: list = [3, 5, 7, None] ) -> pd.DataFrame: 
+    
+    resultados = []
+
+    print("\n--- EXPERIMENTAÇÃO ÁRVORE: MONITORAMENTO DE OVERFITTING ---")
+    for depth in depth_valores:
+        nome_param = f"max_depth={depth}"
+        modelo = DecisionTreeClassifier(max_depth=depth, random_state=42)
+        modelo.fit(X_train, y_train)
+
+        y_pred_train = modelo.predict(X_train)
+        y_pred_test = modelo.predict(X_test)
+
+        acc_train = accuracy_score(y_train, y_pred_train)
+        acc_test = accuracy_score(y_test, y_pred_test)
+        f1_train = f1_score(y_train, y_pred_train)
+        f1_test = f1_score(y_test, y_pred_test)
+
+        gap_acc = (acc_train - acc_test) * 100
+
+        resultados.append(
+            {
+                "Parametro": nome_param,
+                "Valor": str(depth),
+                "Acc_Treino": acc_train,
+                "Acc_Teste": acc_test,
+                "F1_Treino": f1_train,
+                "F1_Teste": f1_test,
+                "Gap_Overfitting_Acc(%)": gap_acc,
+            }
+        )
+
+    df_res = pd.DataFrame(resultados)
+    print(df_res.to_string(index=False))
+    return df_res
+
+def gerar_graficos_overfitting( df_knn: pd.DataFrame, df_arvore: pd.DataFrame, pasta_saida: str = "graficos" ) -> None: # Plota as curvas de acurácia de Treino vs. Teste para comprovar visualmente o diagnóstico de overfitting.
+    caminho_pasta = Path(pasta_saida)
+    caminho_pasta.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Curva KNN
+    axes[0].plot(
+        df_knn["Valor"],
+        df_knn["Acc_Treino"],
+        marker="o",
+        label="Treino (Escalonado)",
+        color="#e74c3c",
+    )
+    axes[0].plot(
+        df_knn["Valor"],
+        df_knn["Acc_Teste"],
+        marker="s",
+        label="Teste (Generalização)",
+        color="#2b5c8f",
+    )
+    axes[0].set_title("KNN: Efeito do Hiperparâmetro K no Overfitting")
+    axes[0].set_xlabel("Número de Vizinhos (K)")
+    axes[0].set_ylabel("Acurácia")
+    axes[0].legend()
+    axes[0].grid(True)
+
+    # Curva Árvore
+    axes[1].plot(
+        df_arvore["Valor"],
+        df_arvore["Acc_Treino"],
+        marker="o",
+        label="Treino (Balanceado)",
+        color="#e74c3c",
+    )
+    axes[1].plot(
+        df_arvore["Valor"],
+        df_arvore["Acc_Teste"],
+        marker="s",
+        label="Teste (Generalização)",
+        color="#27ae60",
+    )
+    axes[1].set_title(
+        "Árvore de Decisão: Efeito de max_depth no Overfitting"
+    )
+    axes[1].set_xlabel("Profundidade Máxima (max_depth)")
+    axes[1].set_ylabel("Acurácia")
+    axes[1].legend()
+    axes[1].grid(True)
+
+    plt.tight_layout()
+    caminho_img = caminho_pasta / "mod_01_curvas_overfitting.png"
+    plt.savefig(caminho_img, dpi=300)
+    plt.close()
+    print(f"\n[GRÁFICO SALVO] {caminho_img}")

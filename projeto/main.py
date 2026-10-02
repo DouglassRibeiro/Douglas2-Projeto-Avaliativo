@@ -5,6 +5,9 @@ from functions import (
     escalonar_dados_knn,
     gerar_graficos_eda,
     gerar_graficos_outliers,
+    gerar_graficos_overfitting,
+    otimizar_arvore,
+    otimizar_knn,
     preparar_features_encoding,
     relatorio_estatistico,
     split_estratificado_balanceado,
@@ -12,6 +15,7 @@ from functions import (
     tratar_nulos,
     tratar_outliers_clipping,
 )
+
 CAMINHO_BASE = os.path.join(
     "projeto", "data", "E Commerce Dataset - E Comm.csv" # caminho do arquivo
 )
@@ -73,5 +77,26 @@ def main():
     print(f" -> Conjunto de Treino para Árvore (não escalonado): {X_train_res.shape}")
     print(f" -> Conjunto de Treino para KNN (escalonado): {X_train_knn.shape}")
     print(f" -> Conjunto de Teste real (intocado): {X_test.shape}")
+
+    print("\n==================================================")
+    print("FASE 5: MODELAGEM E VALIDAÇÃO (O DESAFIO DO OVERFITTING)")
+    print("==================================================")
+    df_res_knn = otimizar_knn(
+        X_train_knn,
+        y_train_res,
+        X_test_knn,
+        y_test,
+        k_valores=[3, 5, 7, 9],
+    )
+    df_res_arvore = otimizar_arvore(
+        X_train_res,
+        y_train_res,
+        X_test,
+        y_test,
+        depth_valores=[3, 5, 7, None],
+    )
+    gerar_graficos_overfitting(
+        df_res_knn, df_res_arvore, pasta_saida=PASTA_GRAFICOS
+    )
     
 main()
