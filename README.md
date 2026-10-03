@@ -1,5 +1,31 @@
 **```a princípio já que estou trabalhando em .py os gráficos serão armazenados na pasta projeto/graficos/...```**
 
+## Dicionário de Dados
+
+| Variável | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `CustomerID` | Numérico (Descartado) | Identificador único do cliente (removido para evitar viés de memorização). |
+| `Churn` | Binário (Alvo) | Status de evasão do cliente (0 = Ativo/Retido, 1 = Evasão/Churn). |
+| `Tenure` | Contínuo | Meses de relacionamento do cliente com a plataforma. |
+| `PreferredLoginDevice` | Categórico | Dispositivo preferencial de login (padronizado: Mobile Phone e Computer). |
+| `CityTier` | Numérico | Classificação econômica da cidade do cliente (Níveis 1, 2 e 3). |
+| `WarehouseToHome` | Contínuo | Distância em km do centro de distribuição até a residência. |
+| `PreferredPaymentMode` | Categórico | Forma preferencial de pagamento (Cartão de Crédito, Débito, UPI, etc.). |
+| `Gender` | Categórico | Gênero do cliente (Male/Female). |
+| `HourSpendOnApp` | Contínuo | Média de horas diárias gastas no aplicativo. |
+| `NumberOfDeviceRegistered` | Discreto | Número total de aparelhos registrados vinculados à conta. |
+| `PreferedOrderCat` | Categórico | Categoria de produto mais comprada (Mobile Phone, Fashion, Grocery, etc.). |
+| `SatisfactionScore` | Discreto | Nota de satisfação declarada pelo cliente (escala 1 a 5). |
+| `MaritalStatus` | Categórico | Estado civil do consumidor (Married, Single, Divorced). |
+| `NumberOfAddress` | Discreto | Quantidade de endereços de entrega cadastrados. |
+| `Complain` | Binário | Indicativo se o cliente abriu reclamação formal no último mês (0 = Não, 1 = Sim). |
+| `OrderAmountHikeFromlastYear` | Contínuo | Aumento percentual do valor de pedidos em relação ao ano anterior. |
+| `CouponUsed` | Discreto | Quantidade de cupons promocionais utilizados. |
+| `OrderCount` | Discreto | Quantidade total de pedidos realizados pelo cliente. |
+| `DaySinceLastOrder` | Contínuo | Quantidade de dias desde a realização da última compra. |
+| `CashbackAmount` | Contínuo | Valor médio monetário acumulado de cashback concedido. |
+| **`cashback_por_pedido`** | **Contínuo (Feature Engineering)** | **Nova métrica calculada: razão entre `CashbackAmount` e `OrderCount`, indicando o custo médio de incentivo financeiro concedido por transação concluída.** |
+
 --- 
 
 ## Fase 1: Análise exploratória (EDA)
