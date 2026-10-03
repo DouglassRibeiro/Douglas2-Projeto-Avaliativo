@@ -1,5 +1,6 @@
 import os
 from functions import (
+    avaliar_e_plotar_modelos_finais,
     carregar_dados,
     criar_feature_cashback_por_pedido,
     escalonar_dados_knn,
@@ -15,6 +16,8 @@ from functions import (
     tratar_nulos,
     tratar_outliers_clipping,
 )
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 CAMINHO_BASE = os.path.join(
     "projeto", "data", "E Commerce Dataset - E Comm.csv" # caminho do arquivo
@@ -97,6 +100,25 @@ def main():
     )
     gerar_graficos_overfitting(
         df_res_knn, df_res_arvore, pasta_saida=PASTA_GRAFICOS
+    )
+
+    print("\n==================================================")
+    print("FASE 6: AVALIAÇÃO E VEREDITO DE NEGÓCIOS")
+    print("==================================================")
+    # Treina os melhores candidatos selecionados para avaliação final
+    melhor_knn = KNeighborsClassifier(n_neighbors=3)
+    melhor_knn.fit(X_train_knn, y_train_res)
+
+    melhor_arvore = DecisionTreeClassifier(max_depth=7, random_state=42)
+    melhor_arvore.fit(X_train_res, y_train_res)
+
+    avaliar_e_plotar_modelos_finais(
+        melhor_knn,
+        X_test_knn,
+        melhor_arvore,
+        X_test,
+        y_test,
+        pasta_saida=PASTA_GRAFICOS,
     )
     
 main()

@@ -131,7 +131,7 @@ def gerar_graficos_eda(df: pd.DataFrame, pasta_saida: str = "graficos") -> None:
 
 ![Matriz de Correlação de Pearson](projeto/graficos/eda_03_correlacao_pearson.png)
 
-Tomada de Decisão 
+### Tomada de Decisão 
 
 1. É visivel nessa analise que há picos incomuns tendo uma descrepancia muito grande em o que é retido, e o que há de evasão. É mostrado um desbalanceamento Severo: A base conta com cerca de 83,2% de clientes ativos (classe 0) e apenas 16,8% evadidos (classe 1). Treinar modelos diretamente sem balanceamento fará o algoritmo priorizar a classe majoritária, gerando falsos negativos críticos.
 
@@ -191,12 +191,12 @@ Tomada de Decisão
 
     return df_imputado
 ```
-- **Nota:** 
-    - Foi adicionado a mediana geral onde se nulos fossem encontrados seria um problema.
-    - Porém a mediana geral da base para OrderCount é 2.0.
-    - Ao imputar 2.0, estamos atribuindo 2 pedidos para esse cliente, o que gera uma distorção controlada, mas ainda assim artificial.
-    - Se esse cliente fosse alguém que comprou apenas 1 vez (ou estava inativo há muito tempo), estaríamos dobrando seu volume transacional teórico.
-        - Esse não foi um requisito levantado pelo projeto, vou aceitar um erro residual para proteger a escala global dos algortimos preditivos.
+### **Nota:** 
+- Foi adicionado a mediana geral onde se nulos fossem encontrados seria um problema.
+- Porém a mediana geral da base para OrderCount é 2.0.
+- Ao imputar 2.0, estamos atribuindo 2 pedidos para esse cliente, o que gera uma distorção controlada, mas ainda assim artificial.
+- Se esse cliente fosse alguém que comprou apenas 1 vez (ou estava inativo há muito tempo), estaríamos dobrando seu volume transacional teórico.
+    - Esse não foi um requisito levantado pelo projeto, vou aceitar um erro residual para proteger a escala global dos algortimos preditivos.
 
 ---
 
@@ -251,9 +251,9 @@ def tratar_outliers_clipping(df: pd.DataFrame, colunas: list[str]) -> pd.DataFra
 ```
 ![Boxplot (Diagrama de Caixa)](projeto/graficos/prep_01_boxplots_outliers.png)
 
-- **NOTA:**
-    - KNN (K-Nearest Neighbors): Classifica com base na similaridade geométrica dos k vizinhos mais próximos por meio da distância euclidiana (distância em linha reta entre observações no espaço vetorial). Valores discrepantes (outliers) distorceriam desproporcionalmente essa métrica de distância. Por isso, utilizou-se o corte estatístico do boxplot (IQR nas antenas) como limiar para o clipping, contendo as anomalias externas na borda aceitável da distribuição e protegendo o cálculo de vizinhança sem descartar nenhum cliente da base.
-    - Árvore de Decisão (Decision Tree): Organiza-se como um fluxograma hierárquico de divisões binárias ("Se o valor for maior que x..."). Como analisa apenas se um valor está acima ou abaixo de um ponto de corte ordenado, a magnitude de um outlier não distorce a partição, dispensando tanto a agressividade do clipping agressivo quanto o escalonamento (trabalha em uma arvore de sim ou não).
+### **NOTA:**
+- KNN (K-Nearest Neighbors): Classifica com base na similaridade geométrica dos k vizinhos mais próximos por meio da distância euclidiana (distância em linha reta entre observações no espaço vetorial). Valores discrepantes (outliers) distorceriam desproporcionalmente essa métrica de distância. Por isso, utilizou-se o corte estatístico do boxplot (IQR nas antenas) como limiar para o clipping, contendo as anomalias externas na borda aceitável da distribuição e protegendo o cálculo de vizinhança sem descartar nenhum cliente da base.
+- Árvore de Decisão (Decision Tree): Organiza-se como um fluxograma hierárquico de divisões binárias ("Se o valor for maior que x..."). Como analisa apenas se um valor está acima ou abaixo de um ponto de corte ordenado, a magnitude de um outlier não distorce a partição, dispensando tanto a agressividade do clipping agressivo quanto o escalonamento (trabalha em uma arvore de sim ou não).
 
 ## Fase 3: Feature Engineering (Coluna Claculadora)
 
@@ -409,11 +409,11 @@ def escalonar_dados_knn(X_train: pd.DataFrame, X_test: pd.DataFrame) -> tuple[np
     return X_train_knn, X_test_knn, scaler
 ```
 
-- **Nota:**
-    - ```StandardScaler``` não descarta nada, aplica a fórmula estatística do **Z-score** em cada elemento x de uma coluna.
-    - Quem tem exatamente o valor médio vira 0; quem estava acima da média vira um número positivo; quem estava abaixo vira um número negativo.
-    - Ajustando assim o espalhamento dos dados. O resultado passa a indicar quantos desvios-padrão aquele cliente está distante da média. Por definição matemática, ao dividir pelo próprio desvio-padrão da coluna, a nova variância e o novo desvio-padrão tornam-se rigorosamente iguais a 1.
-    - z = (x - μ) / σ > demorei entender.
+### **Nota:**
+- ```StandardScaler``` não descarta nada, aplica a fórmula estatística do **Z-score** em cada elemento x de uma coluna.
+- Quem tem exatamente o valor médio vira 0; quem estava acima da média vira um número positivo; quem estava abaixo vira um número negativo.
+- Ajustando assim o espalhamento dos dados. O resultado passa a indicar quantos desvios-padrão aquele cliente está distante da média. Por definição matemática, ao dividir pelo próprio desvio-padrão da coluna, a nova variância e o novo desvio-padrão tornam-se rigorosamente iguais a 1.
+- z = (x - μ) / σ > demorei entender.
 
 ## Fase 5: Modelagem e Validação (O Desafio do Overfitting)
 
@@ -569,7 +569,7 @@ def gerar_graficos_overfitting( df_knn: pd.DataFrame, df_arvore: pd.DataFrame, p
 
 ![Subplot (Curvas Overfitting)](projeto/graficos/mod_01_curvas_overfitting.png)
 
-**NOTA:**
+### **NOTA:**
 
 #### Overfitting > Voltando não posso deixa de comentar, o modelo aprende atinge métricas quase perfeitas no treino, mas perde a capacidade de generalizar quando recebe dados reais.
 - O exemplo do estudante e a prova se torna uma ótima analogia.
@@ -593,4 +593,71 @@ def gerar_graficos_overfitting( df_knn: pd.DataFrame, df_arvore: pd.DataFrame, p
 
 ### 3. Evidência Visual das Curvas de Aprendizado
 - O gráfico gerado (`mod_01_curvas_overfitting.png`) demonstra a convergência das métricas e o monitoramento contínuo da lacuna (*gap*) entre Treino e Teste.
+
+
+## Fase 6: Avaliação e Veredito de Negócios:
+
+### Leitura das Matrizes de Confusão
+
+```python
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report
+
+# Gera classification reports detalhados e plota as matrizes de confusão dos dois modelos campeões.
+def avaliar_e_plotar_modelos_finais( modelo_knn, X_test_knn: np.ndarray, modelo_arvore, X_test_arvore: pd.DataFrame, y_test: pd.Series, pasta_saida: str = "graficos" ) -> None:
+    caminho_pasta = Path(pasta_saida)
+    caminho_pasta.mkdir(parents=True, exist_ok=True)
+
+    # 1. Previsões no conjunto de teste intocado
+    y_pred_knn = modelo_knn.predict(X_test_knn)
+    y_pred_tree = modelo_arvore.predict(X_test_arvore)
+
+    print("\n==================================================")
+    print("RELATÓRIO DE CLASSIFICAÇÃO: MELHOR KNN (K=3)")
+    print("==================================================")
+    print(classification_report(y_test, y_pred_knn, digits=4))
+
+    print("\n==================================================")
+    print("RELATÓRIO DE CLASSIFICAÇÃO: ÁRVORE REGULARIZADA (max_depth=7)")
+    print("==================================================")
+    print(classification_report(y_test, y_pred_tree, digits=4))
+
+    # 2. Plotagem lado a lado das Matrizes de Confusão
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    ConfusionMatrixDisplay.from_predictions(
+        y_test,
+        y_pred_knn,
+        cmap="Blues",
+        ax=axes[0],
+        colorbar=False,
+    )
+    axes[0].set_title("Matriz de Confusão: KNN (K=3)")
+    axes[0].set_xlabel("Previsão do Modelo")
+    axes[0].set_ylabel("Valor Real")
+
+    ConfusionMatrixDisplay.from_predictions(
+        y_test,
+        y_pred_tree,
+        cmap="Greens",
+        ax=axes[1],
+        colorbar=False,
+    )
+    axes[1].set_title("Matriz de Confusão: Árvore (max_depth=7)")
+    axes[1].set_xlabel("Previsão do Modelo")
+    axes[1].set_ylabel("Valor Real")
+
+    plt.tight_layout()
+    caminho_img = caminho_pasta / "mod_02_matrizes_confusao.png"
+    plt.savefig(caminho_img, dpi=300)
+    plt.close()
+    print(f"\n[GRÁFICO SALVO] {caminho_img}")
+```
+
+### O modelo recomendado para implantação em ambiente produtivo é o KNN (K=3). Ele foi capaz de blindar a receita da companhia capturando 93,7% dos clientes prestes a sair (178 de 190), reduzindo os Falsos Negativos de 46 (da Árvore) para apenas 12 clientes, ao mesmo tempo em que desperdiçou consideravelmente menos cupons (57 contra 144 da Árvore de Decisão).
+
+![Curvas de Validação (Hyperparameter Tuning Curves)](projeto/graficos/mod_02_matrizes_confusao.png)
+
+- **Custo do Falso Negativo (FN):** Deixar 46 clientes evadirem (como fez a Árvore) significa perder definitivamente o faturamento recorrente dessas contas e gastar verba de marketing para repor compradores. O KNN reduziu esse prejuízo severo, deixando escapar apenas 12 clientes.
+
+- **Custo do Falso Positivo (FP):** O KNN enviou cupons promocionais desnecessários para apenas 57 clientes fiéis, enquanto a Árvore desperdiçou margem enviando para 144. Ou seja, a Árvore teve quase o triplo de desperdício financeiro em cupons e quase quatro vezes mais perdas irreversíveis de clientes.
 
