@@ -449,3 +449,59 @@ def gerar_graficos_overfitting( df_knn: pd.DataFrame, df_arvore: pd.DataFrame, p
     plt.savefig(caminho_img, dpi=300)
     plt.close()
     print(f"\n[GRÁFICO SALVO] {caminho_img}")
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Fase 6: Avaliação e Veredito de Negócios
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report
+
+# Gera classification reports detalhados e plota as matrizes de confusão dos dois modelos campeões.
+def avaliar_e_plotar_modelos_finais( modelo_knn, X_test_knn: np.ndarray, modelo_arvore, X_test_arvore: pd.DataFrame, y_test: pd.Series, pasta_saida: str = "graficos" ) -> None:
+    caminho_pasta = Path(pasta_saida)
+    caminho_pasta.mkdir(parents=True, exist_ok=True)
+
+    # 1. Previsões no conjunto de teste intocado
+    y_pred_knn = modelo_knn.predict(X_test_knn)
+    y_pred_tree = modelo_arvore.predict(X_test_arvore)
+
+    print("\n==================================================")
+    print("RELATÓRIO DE CLASSIFICAÇÃO: MELHOR KNN (K=3)")
+    print("==================================================")
+    print(classification_report(y_test, y_pred_knn, digits=4))
+
+    print("\n==================================================")
+    print("RELATÓRIO DE CLASSIFICAÇÃO: ÁRVORE REGULARIZADA (max_depth=7)")
+    print("==================================================")
+    print(classification_report(y_test, y_pred_tree, digits=4))
+
+    # 2. Plotagem lado a lado das Matrizes de Confusão
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    ConfusionMatrixDisplay.from_predictions(
+        y_test,
+        y_pred_knn,
+        cmap="Blues",
+        ax=axes[0],
+        colorbar=False,
+    )
+    axes[0].set_title("Matriz de Confusão: KNN (K=3)")
+    axes[0].set_xlabel("Previsão do Modelo")
+    axes[0].set_ylabel("Valor Real")
+
+    ConfusionMatrixDisplay.from_predictions(
+        y_test,
+        y_pred_tree,
+        cmap="Greens",
+        ax=axes[1],
+        colorbar=False,
+    )
+    axes[1].set_title("Matriz de Confusão: Árvore (max_depth=7)")
+    axes[1].set_xlabel("Previsão do Modelo")
+    axes[1].set_ylabel("Valor Real")
+
+    plt.tight_layout()
+    caminho_img = caminho_pasta / "mod_02_matrizes_confusao.png"
+    plt.savefig(caminho_img, dpi=300)
+    plt.close()
+    print(f"\n[GRÁFICO SALVO] {caminho_img}")
